@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import os
+import pickle
 import sys
 from concurrent.futures import ThreadPoolExecutor
 import requests
@@ -10,7 +12,7 @@ __title__ = "routerchecker"
 __author__ = "Thurask"
 __license__ = "WTFPL v2"
 __copyright__ = "Copyright 2016 Thurask"
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 
 def list_strip(alist):
@@ -42,7 +44,7 @@ def scrape_merlin():
             break
     splits = info.split("Date: ")
     splits = list_strip(splits)
-    return splits[1], dateparse(splits[2], "%d-%b-%Y")
+    return [splits[1], dateparse(splits[2], "%d-%b-%Y")]
 
 
 def scrape_shibby():
@@ -53,7 +55,7 @@ def scrape_shibby():
             break
     splits = info.split(" - ")
     splits = list_strip(splits)
-    return splits[1], dateparse(splits[0], "%Y-%m-%d")
+    return [splits[1], dateparse(splits[0], "%Y-%m-%d")]
 
 
 def scrape_ddwrt():
@@ -64,7 +66,7 @@ def scrape_ddwrt():
     info = latest.find("td").find("a").text
     splits = info.split("-r")
     splits = list_strip(splits)
-    return "r" + splits[1], dateparse(splits[0], "%m-%d-%Y")
+    return ["r" + splits[1], dateparse(splits[0], "%m-%d-%Y")]
 
 
 def scrape_openwrt():
@@ -74,7 +76,7 @@ def scrape_openwrt():
     splits = info.split("\n")
     splits[2] = splits[2].replace("Released: ", "")
     splits = list_strip(splits)
-    return splits[1], dateparse(splits[2], "%a, %d %b %Y")
+    return [splits[1], dateparse(splits[2], "%a, %d %b %Y")]
 
 
 def get_results():
@@ -86,22 +88,49 @@ def get_results():
     with ThreadPoolExecutor(max_workers=len(results.keys())) as tpe:
         for key in results:
             results[key] = tpe.submit(possibles[key]).result()
+            results[key].append(False)
     return results
+    
+
+def newer(newer):
+    return " - NEW!" if newer else ""
 
 
 def result_printer(name, values):
     print("{0}{1}".format(name.upper(), ":" if not name.endswith(":") else ""))
-    print("\t{0} released {1}\n".format(values[0], values[1]))
+    print("\t{0} released {1}{2}\n".format(values[0], values[1], newer(values[2])))
+
+
+def save_results(results):
+    mainfile = os.path.join(os.path.expanduser("~"), ".routerchecker")
+    for key in results:
+        results[key][2] = False
+    pickle.dump(results, open(mainfile, "wb"))
+
+
+def compare_results(results):
+    mainfile = os.path.join(os.path.expanduser("~"), ".routerchecker")
+    if not os.path.exists(mainfile):
+        pickle.dump(results, open(mainfile, "wb"))
+    olddata = pickle.load(open(mainfile, "rb"))
+    for key in results:
+        if olddata[key] != results[key]:
+            results[key][2] = True
+        else:
+            results[key][2] = False
+    return results
 
 
 def main():
     print("~~~~ROUTERCHECKER {0}~~~~\n".format(__version__))
     print("GETTING VERSIONS...\n")
     results = get_results()
+    results = compare_results(results)
     result_printer("ASUSWRT MERLIN", results["mer"])
     result_printer("DD-WRT BETA", results["ddw"])
     result_printer("OPENWRT", results["opw"])
     result_printer("TOMATO (SHIBBY)", results["tsh"])
+    save_results(results)
 
 
 def parse_args():

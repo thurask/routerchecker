@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
-from routerchecker import __version__ as version
+from routerchecker.routerchecker import __version__ as version
 
 
 def readme():
@@ -55,4 +55,4 @@ if __name__ == "__main__":
               'requests',
               'beautifulsoup4'
           ],
-          entry_points={'console_scripts': ['routerchecker=routerchecker:parse_args']})
+          entry_points={'console_scripts': ['routerchecker=routerchecker.routerchecker:parse_args']})
