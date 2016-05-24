@@ -10,7 +10,7 @@ __title__ = "routerchecker"
 __author__ = "Thurask"
 __license__ = "WTFPL v2"
 __copyright__ = "Copyright 2016 Thurask"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 
 def list_strip(alist):
